@@ -638,8 +638,13 @@ function buildReport(convs, scores, stats, alreadyIn, days){
   }
   makeChart('radarChart',{type:'radar',data:{labels:SCORE_DIMS.map(d=>DIM_LABELS[d]),datasets:persons.map(p=>({
     label:p,data:SCORE_DIMS.map(d=>radar[p][d]),
-    borderColor:personColor(p),backgroundColor:personColor(p)+'22',pointRadius:3
-  }))},options:{responsive:true,scales:{r:{beginAtZero:true,max:5,grid:{color:'#1e2a45'},ticks:{stepSize:1}}},plugins:{legend:{position:'bottom'}}}});
+    borderColor:personColor(p),backgroundColor:'transparent',borderWidth:2,pointRadius:3,
+    fill:false
+  }))},options:{responsive:true,scales:{r:{beginAtZero:true,max:5,
+    grid:{color:'#2a3555'},angleLines:{color:'#2a3555'},
+    ticks:{stepSize:1,color:'#6070a0',backdropColor:'transparent',font:{size:10}},
+    pointLabels:{color:'#a0aab8',font:{size:12},padding:16}
+  }},plugins:{legend:{position:'bottom',labels:{color:'#a0aab8',boxWidth:12,padding:12}}}}});
   makeChart('dimBarChart',{type:'bar',data:{labels:SCORE_DIMS.map(d=>DIM_LABELS[d]),datasets:persons.map(p=>({
     label:p,data:SCORE_DIMS.map(d=>radar[p][d]),
     backgroundColor:personColor(p)+'aa',borderColor:personColor(p),borderWidth:1
@@ -708,8 +713,10 @@ function exportReport(){
   const a=document.createElement('a');
   a.href=url;
   a.download=title.replace(/[\/\\:*?"<>|]/g,'_')+'.html';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
 function switchTab(name){
