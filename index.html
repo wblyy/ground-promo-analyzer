@@ -136,7 +136,11 @@ canvas{max-width:100%}
 <div id="report-screen">
   <div class="report-header">
     <h1 id="report-title">地推分析报告</h1>
-    <div class="header-meta" id="report-meta"></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="header-meta" id="report-meta"></div>
+      <button onclick="exportReport()" style="background:#1e2f58;color:#7eb3ff;border:1px solid #2a3a6a;border-radius:6px;padding:6px 14px;font-size:.8rem;cursor:pointer">导出 HTML</button>
+      <button onclick="resetToUpload()" style="background:#1a1f35;color:#6070a0;border:1px solid #2a3555;border-radius:6px;padding:6px 14px;font-size:.8rem;cursor:pointer">重新上传</button>
+    </div>
   </div>
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('overview')">总览摘要</button>
@@ -653,6 +657,51 @@ function buildReport(convs, scores, stats, alreadyIn, days){
 // ─────────────────────────────────────────
 // UI
 // ─────────────────────────────────────────
+function resetToUpload(){
+  document.getElementById('report-screen').style.display='none';
+  document.getElementById('upload-screen').style.display='flex';
+  selectedFile=null;
+  startBtn.disabled=true;
+  document.getElementById('file-input').value='';
+  dropZone.querySelector('p').textContent='点击或拖拽 .zip 文件到此处';
+}
+
+function exportReport(){
+  // Snapshot current page HTML with charts rendered as images
+  const title=document.getElementById('report-title').textContent;
+  const cloned=document.documentElement.cloneNode(true);
+
+  // Replace each canvas with a static img (capture from live canvas)
+  const canvases=document.querySelectorAll('canvas');
+  const clonedCanvases=cloned.querySelectorAll('canvas');
+  canvases.forEach((c,i)=>{
+    const img=document.createElement('img');
+    img.src=c.toDataURL('image/png');
+    img.style.cssText=c.style.cssText+'max-width:100%;';
+    img.width=c.width; img.height=c.height;
+    clonedCanvases[i]?.parentNode?.replaceChild(img,clonedCanvases[i]);
+  });
+
+  // Hide upload/progress screens in export; show only report
+  const exportUpload=cloned.getElementById('upload-screen');
+  if(exportUpload)exportUpload.style.display='none';
+  const exportProg=cloned.getElementById('progress-screen');
+  if(exportProg)exportProg.style.display='none';
+  const exportRep=cloned.getElementById('report-screen');
+  if(exportRep)exportRep.style.display='block';
+
+  // Remove script tags (static export, no interactivity needed)
+  cloned.querySelectorAll('script').forEach(s=>s.remove());
+
+  const blob=new Blob(['<!DOCTYPE html>'+cloned.outerHTML],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=title.replace(/[\/\\:*?"<>|]/g,'_')+'.html';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function switchTab(name){
   document.querySelectorAll('.tab-btn').forEach((b,i)=>{
     const names=['overview','efficiency','saturation','scores','detail'];
@@ -672,16 +721,16 @@ function setProgress(pct,title,detail){
   document.getElementById('progress-detail').textContent=detail;
 }
 
-// Init key from localStorage
-const savedKey=localStorage.getItem('promo_api_key')||DEFAULT_API_KEY;
-document.getElementById('api-key-input').value=savedKey;
-if(savedKey)startBtn.disabled=false;
-
-// File selection
+// File selection (declared early so resetToUpload can reference them)
 let selectedFile=null;
 const fileInput=document.getElementById('file-input');
 const dropZone=document.getElementById('drop-zone');
 const startBtn=document.getElementById('start-btn');
+
+// Init key from localStorage
+const savedKey=localStorage.getItem('promo_api_key')||DEFAULT_API_KEY;
+document.getElementById('api-key-input').value=savedKey;
+if(savedKey)startBtn.disabled=false;
 
 function onFileSelected(file){
   if(!file||!file.name.endsWith('.zip')){
