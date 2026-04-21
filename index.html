@@ -348,29 +348,39 @@ async function scoreOne(conv, apiKey){
       })
     });
     const data=await resp.json();
-    if(!resp.ok)return{error:`API ${resp.status}: ${data.error?.message||'unknown'}`};
-    let content=data.choices?.[0]?.message?.content?.trim()||'{}';
+    if(!resp.ok)return{error:`API ${resp.status}: ${data.error?.message||JSON.stringify(data).slice(0,120)}`};
+    let content=data.choices?.[0]?.message?.content?.trim()||'';
+    if(!content)return{error:'empty response'};
+    // Strip markdown code blocks
     const cm=content.match(/```(?:json)?\s*([\s\S]+?)```/);
     if(cm)content=cm[1].trim();
-    return JSON.parse(content);
-  }catch(e){return{error:e.message};}
+    // Extract first {...} JSON object (handles preamble text from grok)
+    const jm=content.match(/\{[\s\S]*\}/);
+    if(jm)content=jm[0];
+    const parsed=JSON.parse(content);
+    // Normalize converted field (handle string "true"/"false")
+    if(typeof parsed.converted==='string')parsed.converted=parsed.converted.toLowerCase()==='true';
+    return parsed;
+  }catch(e){return{error:e.message+' | raw:'+String(e).slice(0,80)};}
 }
 
 async function scoreAll(convs, apiKey, onProgress){
   const results=new Array(convs.length).fill(null);
-  let done=0;
+  let done=0, errors=0, lastError='';
   const queue=[...convs.keys()];
 
   async function worker(){
     while(queue.length){
       const idx=queue.shift();
-      results[idx]=await scoreOne(convs[idx],apiKey);
+      const sc=await scoreOne(convs[idx],apiKey);
+      results[idx]=sc;
+      if(sc.error){errors++;lastError=sc.error;}
       done++;
-      onProgress(done,convs.length);
+      onProgress(done,convs.length,errors,lastError);
     }
   }
   await Promise.all(Array.from({length:CONCURRENCY},()=>worker()));
-  return results;
+  return{results,errors,lastError};
 }
 
 // ─────────────────────────────────────────
@@ -769,9 +779,10 @@ startBtn.addEventListener('click',async()=>{
 
     // Score
     setStep('step-parse','done');setStep('step-score','active');
-    const scores=await scoreAll(convs,apiKey,(done,total)=>{
+    const {results:scores,errors:scoreErrors,lastError}=await scoreAll(convs,apiKey,(done,total,errs,errMsg)=>{
       const pct=20+Math.round(done/total*60);
-      setProgress(pct,`AI评分中 ${done}/${total}`,`并发5路 · 模型: ${MODEL}`);
+      const errHint=errs>0?` · ${errs}个错误`:'';
+      setProgress(pct,`AI评分中 ${done}/${total}${errHint}`,errs>0?`最近错误: ${errMsg.slice(0,80)}`:`并发5路 · 模型: ${MODEL}`);
     });
     setStep('step-score','done');setStep('step-build','active');
     setProgress(85,'生成报告...','计算统计指标');
@@ -793,6 +804,13 @@ startBtn.addEventListener('click',async()=>{
     // Show report
     document.getElementById('progress-screen').style.display='none';
     document.getElementById('report-screen').style.display='block';
+    // Show diagnostic banner if high error rate
+    if(scoreErrors>convs.length*0.2){
+      const banner=document.createElement('div');
+      banner.style.cssText='background:#2a1010;border:1px solid #5a2020;border-radius:8px;padding:12px 32px;margin:0 32px 16px;color:#e08080;font-size:.85rem';
+      banner.innerHTML=`<strong>⚠ AI评分异常：${scoreErrors}/${convs.length} 条调用失败</strong><br>进群数可能偏低。最近错误：${lastError.slice(0,150)}<br>可能原因：API Key 有误 / CORS 限制 / 网络超时。建议刷新后重试。`;
+      document.querySelector('.tabs').before(banner);
+    }
 
     const dayLabelsStr=days.length===1?days[0]:`${days[0]}–${days[days.length-1]}`;
     document.getElementById('report-title').textContent=`地推分析报告 · ${dayLabelsStr}`;
