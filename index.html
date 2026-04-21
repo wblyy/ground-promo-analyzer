@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>地推录音分析</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d0f1a;color:#c8d0e0;font-family:'PingFang SC','Microsoft YaHei',sans-serif;min-height:100vh}
+h1{font-size:1.5rem;color:#e8eaf0;font-weight:600}
+h2{font-size:1.1rem;color:#a0aab8;font-weight:500;margin-bottom:12px}
+a{color:#7eb3ff}
+
+/* ── Upload screen ── */
+#upload-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px;gap:24px}
+#drop-zone{border:2px dashed #2a3555;border-radius:16px;width:100%;max-width:560px;padding:60px 40px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s}
+#drop-zone:hover,#drop-zone.drag-over{border-color:#4a7fd4;background:#131728}
+#drop-zone p{color:#6070a0;margin-top:10px;font-size:0.9rem}
+#drop-zone input{display:none}
+.btn-main{background:#2d5ccc;color:#fff;border:none;border-radius:8px;padding:12px 28px;font-size:1rem;cursor:pointer;transition:background .2s}
+.btn-main:hover{background:#3a72e8}
+.key-row{display:flex;gap:8px;width:100%;max-width:560px;align-items:center}
+.key-row label{color:#6070a0;font-size:.85rem;white-space:nowrap}
+.key-row input{flex:1;background:#131728;border:1px solid #2a3555;border-radius:6px;padding:8px 12px;color:#c8d0e0;font-size:.85rem;font-family:monospace}
+.key-row input:focus{outline:none;border-color:#4a7fd4}
+
+/* ── Progress ── */
+#progress-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:20px;padding:40px}
+.progress-title{font-size:1.2rem;color:#e8eaf0}
+.progress-bar-wrap{width:100%;max-width:480px;background:#1a1f35;border-radius:8px;height:8px;overflow:hidden}
+.progress-bar{height:100%;background:#2d5ccc;transition:width .3s;width:0%}
+.progress-detail{color:#6070a0;font-size:.85rem;max-width:480px;text-align:center}
+.step-list{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.step{background:#1a1f35;border-radius:20px;padding:6px 16px;font-size:.8rem;color:#505878}
+.step.active{background:#1e2f58;color:#7eb3ff}
+.step.done{background:#1e3527;color:#5cb87a}
+
+/* ── Report screen ── */
+#report-screen{display:none;padding:24px 0 60px}
+.report-header{background:#111422;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;position:sticky;top:0;z-index:100}
+.report-header h1{font-size:1.2rem}
+.header-meta{color:#6070a0;font-size:.8rem}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;padding:0 32px;margin-bottom:24px;border-bottom:1px solid #1a1f35}
+.tab-btn{padding:10px 20px;background:none;border:none;color:#6070a0;cursor:pointer;font-size:.9rem;border-bottom:2px solid transparent;transition:.15s}
+.tab-btn.active{color:#7eb3ff;border-bottom-color:#4a7fd4}
+.tab-content{display:none;padding:0 32px}
+.tab-content.active{display:block}
+
+/* Cards */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+.kpi-card{background:#111422;border-radius:10px;padding:16px;text-align:center}
+.kpi-val{font-size:2rem;font-weight:700;color:#e8eaf0;line-height:1}
+.kpi-label{font-size:.75rem;color:#6070a0;margin-top:6px}
+.kpi-sub{font-size:.7rem;color:#505878;margin-top:2px}
+
+/* Person cards */
+.person-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:16px}
+.person-card{background:#111422;border-radius:10px;padding:16px;border-top:3px solid transparent}
+.person-card h3{font-size:.95rem;font-weight:600;margin-bottom:8px}
+.person-stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+.person-stat{font-size:.8rem;color:#6070a0}
+.person-stat strong{color:#c8d0e0}
+.trend-badge{font-size:.75rem;padding:2px 8px;border-radius:10px;margin-left:8px}
+.trend-up{background:#1b3a1e;color:#5cb87a}
+.trend-down{background:#3a1b1b;color:#e06060}
+.trend-flat{background:#1e1f2e;color:#6070a0}
+.spots{font-size:.75rem;color:#6070a0;margin-top:6px}
+.spots span{color:#8899cc}
+
+/* Charts */
+.chart-wrap{background:#111422;border-radius:10px;padding:20px;margin-bottom:20px}
+.chart-title{font-size:.9rem;color:#a0aab8;margin-bottom:14px}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:700px){.chart-grid{grid-template-columns:1fr}}
+canvas{max-width:100%}
+
+/* Table */
+.data-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.data-table th{background:#1a1f35;color:#8899cc;padding:8px 10px;text-align:left;white-space:nowrap;position:sticky;top:0}
+.data-table td{padding:8px 10px;border-bottom:1px solid #1a1f35;color:#c8d0e0}
+.data-table tr:hover td{background:#131728}
+.table-wrap{overflow-x:auto;border-radius:10px;background:#111422}
+
+/* Error */
+.error-box{background:#2a1010;border:1px solid #5a2020;border-radius:8px;padding:16px;color:#e08080;margin-top:16px}
+
+/* Sat meter */
+.sat-row{display:flex;align-items:center;gap:10px;margin:6px 0}
+.sat-bar-bg{flex:1;background:#1a1f35;border-radius:4px;height:8px;overflow:hidden}
+.sat-bar{height:100%;border-radius:4px;transition:width .5s}
+.sat-pct{font-size:.8rem;color:#c8d0e0;width:50px;text-align:right}
+.sat-name{font-size:.8rem;color:#8899cc;width:60px}
+</style>
+</head>
+<body>
+
+<!-- Upload Screen -->
+<div id="upload-screen">
+  <div style="text-align:center">
+    <h1>地推录音分析</h1>
+    <p style="color:#6070a0;font-size:.9rem;margin-top:6px">上传录音转写 zip 包，自动解析话术质量与进群转化</p>
+  </div>
+  <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3a4a6a" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <p>点击或拖拽 .zip 文件到此处</p>
+    <p>支持多天、多人录音转写（txt格式）</p>
+    <input type="file" id="file-input" accept=".zip">
+  </div>
+  <div class="key-row">
+    <label>API Key</label>
+    <input type="password" id="api-key-input" placeholder="xai-..." autocomplete="off">
+  </div>
+  <p style="font-size:.75rem;color:#404858;max-width:560px;text-align:center">Key 仅存在浏览器 localStorage，不上传服务器。支持 xAI (xai-...)、OpenRouter、Anthropic 等 OpenAI-compatible key。</p>
+  <button class="btn-main" id="start-btn" disabled>开始分析</button>
+  <div id="upload-error" class="error-box" style="display:none;max-width:560px"></div>
+</div>
+
+<!-- Progress Screen -->
+<div id="progress-screen">
+  <div class="progress-title" id="progress-title">正在处理...</div>
+  <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+  <div class="progress-detail" id="progress-detail"></div>
+  <div class="step-list">
+    <div class="step" id="step-extract">解压文件</div>
+    <div class="step" id="step-parse">解析对话</div>
+    <div class="step" id="step-score">AI评分</div>
+    <div class="step" id="step-build">生成报告</div>
+  </div>
+</div>
+
+<!-- Report Screen -->
+<div id="report-screen">
+  <div class="report-header">
+    <h1 id="report-title">地推分析报告</h1>
+    <div class="header-meta" id="report-meta"></div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('overview')">总览摘要</button>
+    <button class="tab-btn" onclick="switchTab('efficiency')">对话效率</button>
+    <button class="tab-btn" onclick="switchTab('saturation')">点位饱和</button>
+    <button class="tab-btn" onclick="switchTab('scores')">话术评分</button>
+    <button class="tab-btn" onclick="switchTab('detail')">明细数据</button>
+  </div>
+
+  <!-- Tab: Overview -->
+  <div id="tab-overview" class="tab-content active">
+    <div id="kpi-cards" class="card-grid"></div>
+    <h2>人员成长概览</h2>
+    <div id="person-cards" class="person-grid"></div>
+  </div>
+
+  <!-- Tab: Efficiency -->
+  <div id="tab-efficiency" class="tab-content">
+    <div class="chart-grid">
+      <div class="chart-wrap"><div class="chart-title">进群人次/小时（日趋势）</div><canvas id="convPhChart"></canvas></div>
+      <div class="chart-wrap"><div class="chart-title">有效对话/小时（日趋势）</div><canvas id="effPhChart"></canvas></div>
+    </div>
+    <div class="chart-wrap"><div class="chart-title">人均单日进群人次（绝对值）</div><canvas id="convAbsChart"></canvas></div>
+  </div>
+
+  <!-- Tab: Saturation -->
+  <div id="tab-saturation" class="tab-content">
+    <div class="card-grid" id="sat-kpi-cards"></div>
+    <div class="chart-grid">
+      <div class="chart-wrap"><div class="chart-title">每日全团进群人次 + 累计</div><canvas id="cumChart"></canvas></div>
+      <div class="chart-wrap"><div class="chart-title">已在群路人/小时（点位渗透度）</div><canvas id="alreadyInChart"></canvas></div>
+    </div>
+    <h2 style="margin-top:8px">人员饱和率（已在群÷有效对话）</h2>
+    <div id="sat-bars" style="max-width:600px"></div>
+  </div>
+
+  <!-- Tab: Scores -->
+  <div id="tab-scores" class="tab-content">
+    <div class="chart-grid">
+      <div class="chart-wrap"><div class="chart-title">话术能力雷达（全周期均值）</div><canvas id="radarChart"></canvas></div>
+      <div class="chart-wrap"><div class="chart-title">各维度得分（分人均值）</div><canvas id="dimBarChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Tab: Detail -->
+  <div id="tab-detail" class="tab-content">
+    <div class="table-wrap"><table class="data-table" id="detail-table"></table></div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────
+const DEFAULT_API_KEY = '';
+const API_URL = 'https://api.x.ai/v1/chat/completions';
+const MODEL = 'grok-3-mini';
+const CONCURRENCY = 5;
+const GAP_THRESHOLD = 60;
+
+const COLORS = {
+  '孙雪':'#4E79A7','张会珠':'#F28E2B','杨召宏':'#E15759',
+  '王佳佳':'#76B7B2','王少玲':'#59A14F','马文英':'#EDC948',
+  _default:'#9c8fd4'
+};
+const SCORE_DIMS = ['hook_score','clarity_score','objection_score','conversion_score'];
+const DIM_LABELS = {hook_score:'开场钩子',clarity_score:'价值传递',objection_score:'异议处理',conversion_score:'转化引导'};
+
+const ALREADY_IN_STRICT = ['已经进了','已经在群','我进了','早进了','在群里了','我在群里','已经进群','进了进了','扫过了','扫了扫了','我们都进了'];
+const ALREADY_IN_WIDE = ['我已经','已经扫','进去了','已经在里面'];
+const GROUP_CONTEXT = ['扫码','进群','群里','领取','领券'];
+
+const SYSTEM_PROMPT = `你是地推话术质量评审专家。评估以下地推对话（超市开业拉新进群场景）。
+
+请用JSON格式返回评分，不要有其他文字：
+{
+  "converted": true/false,
+  "hook_score": 1-5,
+  "clarity_score": 1-5,
+  "objection_score": 1-5,
+  "conversion_score": 1-5,
+  "bright_spots": "最多20字，本次对话中做得好的地方",
+  "weak_spots": "最多20字，本次对话中可改进的地方"
+}
+
+评分标准：5分极佳，4分良好，3分一般，2分较差，1分很差。
+注意：converted=true必须有明确成功信号；广播式喊话（无用户互动）统一评hook=2,clarity=2,objection=3,conversion=2；对话极短(<3轮)各项2-3分。`;
+
+// ─────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────
+function parseDuration(s){
+  if(!s)return 0;
+  s=s.trim();
+  let m;
+  if((m=s.match(/(\d+)小时\s*(\d+)秒/)))return+m[1]*3600+ +m[2];
+  if((m=s.match(/(\d+)小时/)))return+m[1]*3600;
+  if((m=s.match(/(\d+)分钟\s*(\d+)秒/)))return+m[1]*60+ +m[2];
+  if((m=s.match(/(\d+)分钟/)))return+m[1]*60;
+  if((m=s.match(/(\d+)秒/)))return+m[1];
+  return 0;
+}
+function tsToSec(ts){
+  const p=ts.trim().split(':');
+  if(p.length===2)return+p[0]*60+ +p[1];
+  if(p.length===3)return+p[0]*3600+ +p[1]*60+ +p[2];
+  return 0;
+}
+function personColor(p){return COLORS[p]||COLORS._default}
+
+// ─────────────────────────────────────────
+// PARSE
+// ─────────────────────────────────────────
+function parseFile(content, person, day, filename){
+  const lines=content.split('\n');
+  if(!lines.length)return[];
+  const header=lines[0].split('|');
+  const fileDurS=header.length>1?parseDuration(header[1]):0;
+
+  const utterances=[];
+  let curSpeaker=null,curTs=0,curTexts=[];
+  const speakerRe=/^说话人\s+(\d+)\s+(\d{1,2}:\d{2})/;
+
+  for(const line of lines){
+    const ln=line.trim();
+    const m=speakerRe.exec(ln);
+    if(m){
+      if(curSpeaker!==null)utterances.push({speaker:+curSpeaker,ts:curTs,text:curTexts.join(' ').trim()});
+      curSpeaker=+m[1]; curTs=tsToSec(m[2]); curTexts=[];
+    } else if(curSpeaker!==null&&ln) curTexts.push(ln);
+  }
+  if(curSpeaker!==null)utterances.push({speaker:curSpeaker,ts:curTs,text:curTexts.join(' ').trim()});
+  if(!utterances.length)return[];
+
+  // Segment into conversations
+  const convs=[];let cur=[],lastTs=0;
+  for(const u of utterances){
+    if(cur.length&&u.speaker===1&&(u.ts-lastTs)>GAP_THRESHOLD){
+      if(cur.length>=2)convs.push(cur);
+      cur=[u];
+    } else cur.push(u);
+    lastTs=u.ts;
+  }
+  if(cur.length>=2)convs.push(cur);
+
+  return convs.map((conv,i)=>{
+    const p1=conv.filter(u=>u.speaker===1);
+    const others=conv.filter(u=>u.speaker!==1);
+    if(!p1.length)return null;
+    const transcript=conv.filter(u=>u.text).map(u=>`[${u.speaker===1?'地推员':`用户${u.speaker-1}`}] ${u.text}`).join('\n');
+    return{
+      file:filename,person,day,conv_index:i,
+      start_ts:conv[0].ts,end_ts:conv[conv.length-1].ts,
+      duration_s:conv[conv.length-1].ts-conv[0].ts,
+      promoter_turns:p1.length,
+      promoter_words:p1.map(u=>u.text.split(/\s+/).length).reduce((a,b)=>a+b,0),
+      has_user_response:others.length>0,
+      transcript,file_duration_s:fileDurS
+    };
+  }).filter(Boolean);
+}
+
+function parseDayFromDir(dirName){
+  const m=dirName.match(/(\d+)[-.](\d+)/);
+  return m?`${m[1]}-${m[2]}`:dirName.replace(/[^0-9-]/g,'');
+}
+
+async function parseZip(zipFile){
+  const zip=await JSZip.loadAsync(zipFile);
+  const conversations=[];
+  const entries=Object.values(zip.files).filter(f=>!f.dir&&f.name.endsWith('.txt')&&!f.name.includes('__MACOSX')&&!f.name.includes('/._'));
+
+  for(const entry of entries){
+    const parts=entry.name.split('/');
+    if(parts.length<2)continue;
+    const dirName=parts[0];
+    const filename=parts[parts.length-1];
+    const day=parseDayFromDir(dirName);
+    const pm=filename.match(/^(.+?)-\d/);
+    const person=pm?pm[1]:filename.replace('.txt','');
+    const content=await entry.async('string');
+    const convs=parseFile(content,person,day,filename);
+    conversations.push(...convs);
+  }
+  return conversations;
+}
+
+// ─────────────────────────────────────────
+// SCORE
+// ─────────────────────────────────────────
+async function scoreOne(conv, apiKey){
+  let transcript=conv.transcript||'';
+  if(transcript.length>2000)transcript=transcript.slice(0,2000)+'\n...[截断]';
+  if(transcript.trim().length<20){
+    return{converted:false,hook_score:2,clarity_score:2,objection_score:3,conversion_score:2,bright_spots:'内容过短',weak_spots:'无实质对话'};
+  }
+  try{
+    const resp=await fetch(API_URL,{
+      method:'POST',
+      headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:MODEL,
+        messages:[{role:'system',content:SYSTEM_PROMPT},{role:'user',content:`对话内容：\n${transcript}`}],
+        max_tokens:300,temperature:0.1
+      })
+    });
+    const data=await resp.json();
+    if(!resp.ok)return{error:`API ${resp.status}: ${data.error?.message||'unknown'}`};
+    let content=data.choices?.[0]?.message?.content?.trim()||'{}';
+    const cm=content.match(/```(?:json)?\s*([\s\S]+?)```/);
+    if(cm)content=cm[1].trim();
+    return JSON.parse(content);
+  }catch(e){return{error:e.message};}
+}
+
+async function scoreAll(convs, apiKey, onProgress){
+  const results=new Array(convs.length).fill(null);
+  let done=0;
+  const queue=[...convs.keys()];
+
+  async function worker(){
+    while(queue.length){
+      const idx=queue.shift();
+      results[idx]=await scoreOne(convs[idx],apiKey);
+      done++;
+      onProgress(done,convs.length);
+    }
+  }
+  await Promise.all(Array.from({length:CONCURRENCY},()=>worker()));
+  return results;
+}
+
+// ─────────────────────────────────────────
+// STATS
+// ─────────────────────────────────────────
+function computeStats(convs, scores){
+  const stats={};        // [person][day] = {...}
+  const fileDur={};      // [person][day][file] = dur_s
+
+  for(let i=0;i<convs.length;i++){
+    const c=convs[i],sc=scores[i]||{};
+    const{person:p,day:d,file:f}=c;
+    if(!stats[p])stats[p]={};
+    if(!stats[p][d])stats[p][d]={total:0,effective:0,converted:0,scores:{},brights:[],weaks:[]};
+    const s=stats[p][d];
+    s.total++;
+    const eff=c.has_user_response&&c.promoter_turns>=3;
+    if(eff)s.effective++;
+    if(!fileDur[p])fileDur[p]={};
+    if(!fileDur[p][d])fileDur[p][d]={};
+    if(!(f in fileDur[p][d]))fileDur[p][d][f]=c.file_duration_s||0;
+    if(sc&&!sc.error){
+      if(sc.converted&&(eff||c.promoter_turns>=2))s.converted++;
+      for(const dim of SCORE_DIMS){
+        if(typeof sc[dim]==='number'){
+          if(!s.scores[dim])s.scores[dim]=[];
+          s.scores[dim].push(sc[dim]);
+        }
+      }
+      if(sc.bright_spots)s.brights.push(sc.bright_spots);
+      if(sc.weak_spots)s.weaks.push(sc.weak_spots);
+    }
+  }
+
+  const result={};
+  for(const p in stats){
+    result[p]={};
+    for(const d in stats[p]){
+      const s=stats[p][d];
+      const hours=Object.values(fileDur[p]?.[d]||{}).reduce((a,b)=>a+b,0)/3600;
+      const avgSc={};
+      for(const dim of SCORE_DIMS){
+        const v=s.scores[dim]||[];
+        avgSc[dim]=v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(2):0;
+      }
+      const totalScore=SCORE_DIMS.some(d=>avgSc[d]>0)?
+        +(SCORE_DIMS.reduce((a,d)=>a+avgSc[d],0)/4).toFixed(2):0;
+      result[p][d]={
+        total:s.total,effective:s.effective,converted:s.converted,
+        conv_rate:s.total>0?+(s.converted/s.total*100).toFixed(1):0,
+        eff_per_hour:hours>0?+(s.effective/hours).toFixed(1):0,
+        conv_per_hour:hours>0?+(s.converted/hours).toFixed(1):0,
+        total_hours:+hours.toFixed(1),
+        avg_scores:avgSc,total_score:totalScore,
+        files:Object.keys(fileDur[p]?.[d]||{}).length,
+        brights:s.brights.slice(0,3),weaks:s.weaks.slice(0,3)
+      };
+    }
+  }
+  return result;
+}
+
+function computeAlreadyInGroup(convs){
+  const counts={};  // [person][day] = count
+  const fileDur={};
+  for(const c of convs){
+    const{person:p,day:d,file:f}=c;
+    if(!counts[p])counts[p]={};
+    if(!counts[p][d])counts[p][d]=0;
+    if(!fileDur[p])fileDur[p]={};
+    if(!fileDur[p][d])fileDur[p][d]={};
+    if(!(f in fileDur[p][d]))fileDur[p][d][f]=c.file_duration_s||0;
+    const userLines=c.transcript.split('\n').filter(l=>l.startsWith('[用户')).join(' ');
+    const strict=ALREADY_IN_STRICT.some(s=>userLines.includes(s));
+    const wide=!strict&&ALREADY_IN_WIDE.some(s=>userLines.includes(s))&&GROUP_CONTEXT.some(k=>c.transcript.includes(k));
+    if(strict||wide)counts[p][d]++;
+  }
+  const out={};
+  for(const p in counts){
+    out[p]={};
+    for(const d in counts[p]){
+      const h=Object.values(fileDur[p]?.[d]||{}).reduce((a,b)=>a+b,0)/3600;
+      const cnt=counts[p][d];
+      out[p][d]={count:cnt,per_hour:h>0?+(cnt/h).toFixed(1):0};
+    }
+  }
+  return out;
+}
+
+function computeSaturation(convs, scores, days){
+  const daySt={};
+  for(const d of days)daySt[d]={converted:0,effective:0};
+  for(let i=0;i<convs.length;i++){
+    const c=convs[i],sc=scores[i]||{};
+    const d=c.day;
+    if(!daySt[d])daySt[d]={converted:0,effective:0};
+    if(c.has_user_response&&c.promoter_turns>=3)daySt[d].effective++;
+    if(sc&&!sc.error&&sc.converted)daySt[d].converted++;
+  }
+  let cum=0;
+  return days.map(d=>{
+    const s=daySt[d]||{converted:0,effective:0};
+    cum+=s.converted;
+    return{day:d,daily:s.converted,effective:s.effective,cumulative:cum,
+      rate:s.effective>0?+(s.converted/s.effective*100).toFixed(1):0};
+  });
+}
+
+// ─────────────────────────────────────────
+// REPORT
+// ─────────────────────────────────────────
+const chartInstances={};
+function makeChart(id,config){
+  if(chartInstances[id])chartInstances[id].destroy();
+  const ctx=document.getElementById(id).getContext('2d');
+  chartInstances[id]=new Chart(ctx,config);
+}
+
+Chart.defaults.color='#8899cc';
+Chart.defaults.borderColor='#1e2a45';
+
+function buildReport(convs, scores, stats, alreadyIn, days){
+  const persons=Object.keys(stats).sort();
+  const saturation=computeSaturation(convs,scores,days);
+  const dayLabels=days.map(d=>`${d.replace('-','月')}日`);
+
+  // ── KPI summary ──
+  let totalConv=0,totalEff=0,totalHours=0;
+  let totalAlreadyIn=0,totalEffAll=0;
+  for(const p in stats){
+    for(const d in stats[p]){
+      const s=stats[p][d];
+      totalConv+=s.converted;
+      totalEff+=s.effective;
+      totalHours+=s.total_hours;
+    }
+    for(const d in (alreadyIn[p]||{})){
+      totalAlreadyIn+=alreadyIn[p][d].count;
+    }
+  }
+  for(const d of days){
+    const row=saturation.find(r=>r.day===d);
+    if(row)totalEffAll+=row.effective;
+  }
+  const satRate=totalEffAll>0?+(totalAlreadyIn/totalEffAll*100).toFixed(1):0;
+  const cph=totalHours>0?+(totalConv/totalHours).toFixed(1):0;
+
+  document.getElementById('kpi-cards').innerHTML=`
+    <div class="kpi-card"><div class="kpi-val">${totalConv}</div><div class="kpi-label">累计进群人次</div></div>
+    <div class="kpi-card"><div class="kpi-val">${totalEff}</div><div class="kpi-label">有效对话次</div></div>
+    <div class="kpi-card"><div class="kpi-val">${totalHours.toFixed(1)}</div><div class="kpi-label">录音小时</div></div>
+    <div class="kpi-card"><div class="kpi-val">${cph}</div><div class="kpi-label">进群均速 /h</div></div>
+    <div class="kpi-card"><div class="kpi-val">${satRate}%</div><div class="kpi-label">点位饱和率</div><div class="kpi-sub">已在群÷有效对话</div></div>
+  `;
+
+  // ── Person cards ──
+  const cards=persons.map(p=>{
+    const daysSorted=Object.keys(stats[p]||{}).sort();
+    let trendHtml='';
+    let satHtml='';
+    if(daysSorted.length>=2){
+      const first=stats[p][daysSorted[0]].conv_per_hour;
+      const last=stats[p][daysSorted[daysSorted.length-1]].conv_per_hour;
+      const delta=+(last-first).toFixed(1);
+      const cls=delta>0.3?'trend-up':delta<-0.3?'trend-down':'trend-flat';
+      const sym=delta>0.3?'↑进步':delta<-0.3?'↓退步':'→持平';
+      trendHtml=`<span class="trend-badge ${cls}">${sym} ${delta>0?'+':''}${delta}/h</span>`;
+    }
+    // per-person saturation rate
+    let pAlreadyIn=0,pEff=0;
+    for(const d of daysSorted){
+      pAlreadyIn+=(alreadyIn[p]?.[d]?.count||0);
+      pEff+=(stats[p][d].effective||0);
+    }
+    const pSat=pEff>0?+(pAlreadyIn/pEff*100).toFixed(0):0;
+
+    const allConv=daysSorted.reduce((a,d)=>a+(stats[p][d].converted||0),0);
+    const totalHrs=daysSorted.reduce((a,d)=>a+(stats[p][d].total_hours||0),0);
+    const avgCph=totalHrs>0?+(allConv/totalHrs).toFixed(1):0;
+    const brightTop=(daysSorted.flatMap(d=>stats[p][d].brights||[]))[0]||'';
+    const weakTop=(daysSorted.flatMap(d=>stats[p][d].weaks||[]))[0]||'';
+
+    return`<div class="person-card" style="border-top-color:${personColor(p)}">
+      <h3 style="color:${personColor(p)}">${p}${trendHtml}</h3>
+      <div class="person-stats">
+        <div class="person-stat">进群 <strong>${allConv}</strong></div>
+        <div class="person-stat">均速 <strong>${avgCph}/h</strong></div>
+        <div class="person-stat">录音 <strong>${totalHrs.toFixed(1)}h</strong></div>
+        <div class="person-stat">饱和率 <strong>${pSat}%</strong></div>
+      </div>
+      ${brightTop?`<div class="spots">亮点: <span>${brightTop}</span></div>`:''}
+      ${weakTop?`<div class="spots">待改: <span>${weakTop}</span></div>`:''}
+    </div>`;
+  });
+  document.getElementById('person-cards').innerHTML=cards.join('');
+
+  // ── Efficiency charts ──
+  const effPhData={labels:dayLabels,datasets:persons.map(p=>({
+    label:p,data:days.map(d=>stats[p]?.[d]?.eff_per_hour??null),
+    borderColor:personColor(p),backgroundColor:personColor(p)+'33',
+    tension:.3,spanGaps:true,pointRadius:4
+  }))};
+  makeChart('convPhChart',{type:'line',data:{labels:dayLabels,datasets:persons.map(p=>({
+    label:p,data:days.map(d=>stats[p]?.[d]?.conv_per_hour??null),
+    borderColor:personColor(p),backgroundColor:personColor(p)+'33',
+    tension:.3,spanGaps:true,pointRadius:4
+  }))},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,grid:{color:'#1e2a45'}}}}});
+  makeChart('effPhChart',{type:'line',data:effPhData,options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,grid:{color:'#1e2a45'}}}}});
+  makeChart('convAbsChart',{type:'bar',data:{labels:dayLabels,datasets:persons.map(p=>({
+    label:p,data:days.map(d=>stats[p]?.[d]?.converted??null),
+    backgroundColor:personColor(p)+'aa',borderColor:personColor(p),borderWidth:1
+  }))},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,grid:{color:'#1e2a45'}}}}});
+
+  // ── Saturation charts ──
+  const cumData=saturation.map(r=>r.cumulative);
+  const dailyData=saturation.map(r=>r.daily);
+  document.getElementById('sat-kpi-cards').innerHTML=`
+    <div class="kpi-card"><div class="kpi-val">${saturation[saturation.length-1]?.cumulative||0}</div><div class="kpi-label">累计进群</div></div>
+    <div class="kpi-card"><div class="kpi-val">${saturation.map(r=>r.rate).find(r=>r>0)||0}%</div><div class="kpi-label">日均转化率</div><div class="kpi-sub">转化÷有效对话</div></div>
+    <div class="kpi-card"><div class="kpi-val">${totalAlreadyIn}</div><div class="kpi-label">已在群路人</div></div>
+    <div class="kpi-card"><div class="kpi-val">${satRate}%</div><div class="kpi-label">点位饱和率</div><div class="kpi-sub">已在群÷有效对话</div></div>
+  `;
+  makeChart('cumChart',{type:'bar',data:{labels:dayLabels,datasets:[
+    {label:'当日进群',data:dailyData,backgroundColor:'#2d5ccc88',borderColor:'#4a7fd4',borderWidth:1,yAxisID:'y'},
+    {label:'累计进群',data:cumData,type:'line',borderColor:'#EDC948',backgroundColor:'#EDC94833',pointRadius:4,tension:.3,yAxisID:'y2'}
+  ]},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,grid:{color:'#1e2a45'}},y2:{position:'right',beginAtZero:true,grid:{display:false}}}}});
+
+  makeChart('alreadyInChart',{type:'bar',data:{labels:dayLabels,datasets:persons.map(p=>({
+    label:p,data:days.map(d=>alreadyIn[p]?.[d]?.per_hour??null),
+    backgroundColor:personColor(p)+'aa',borderColor:personColor(p),borderWidth:1
+  }))},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,title:{display:true,text:'已在群路人/h'},grid:{color:'#1e2a45'}}}}});
+
+  // Sat bars
+  const satBars=persons.map(p=>{
+    let ai=0,eff=0;
+    for(const d in (stats[p]||{})){ai+=(alreadyIn[p]?.[d]?.count||0);eff+=stats[p][d].effective;}
+    const pct=eff>0?+(ai/eff*100).toFixed(0):0;
+    const c=personColor(p);
+    return`<div class="sat-row">
+      <div class="sat-name">${p}</div>
+      <div class="sat-bar-bg"><div class="sat-bar" style="width:${Math.min(pct,100)}%;background:${c}"></div></div>
+      <div class="sat-pct">${pct}%</div>
+    </div>`;
+  });
+  document.getElementById('sat-bars').innerHTML=satBars.join('');
+
+  // ── Radar + dimBar ──
+  const radar={};
+  for(const p of persons){
+    radar[p]={};
+    for(const dim of SCORE_DIMS){
+      const vals=Object.values(stats[p]||{}).map(s=>s.avg_scores[dim]).filter(v=>v>0);
+      radar[p][dim]=vals.length?+(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2):0;
+    }
+  }
+  makeChart('radarChart',{type:'radar',data:{labels:SCORE_DIMS.map(d=>DIM_LABELS[d]),datasets:persons.map(p=>({
+    label:p,data:SCORE_DIMS.map(d=>radar[p][d]),
+    borderColor:personColor(p),backgroundColor:personColor(p)+'22',pointRadius:3
+  }))},options:{responsive:true,scales:{r:{beginAtZero:true,max:5,grid:{color:'#1e2a45'},ticks:{stepSize:1}}},plugins:{legend:{position:'bottom'}}}});
+  makeChart('dimBarChart',{type:'bar',data:{labels:SCORE_DIMS.map(d=>DIM_LABELS[d]),datasets:persons.map(p=>({
+    label:p,data:SCORE_DIMS.map(d=>radar[p][d]),
+    backgroundColor:personColor(p)+'aa',borderColor:personColor(p),borderWidth:1
+  }))},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,max:5,grid:{color:'#1e2a45'}}}}});
+
+  // ── Detail table ──
+  const headers=['姓名','日期','总对话','有效对话','进群','进群/h','有效/h','录音h','已在群','已在群/h','钩子','传递','异议','引导'];
+  const rows=[];
+  for(const p of persons){
+    for(const d of days){
+      const s=stats[p]?.[d];if(!s)continue;
+      const ai=alreadyIn[p]?.[d]||{count:0,per_hour:0};
+      rows.push([p,d,s.total,s.effective,s.converted,s.conv_per_hour,s.eff_per_hour,s.total_hours,
+        ai.count,ai.per_hour,
+        s.avg_scores.hook_score,s.avg_scores.clarity_score,s.avg_scores.objection_score,s.avg_scores.conversion_score
+      ]);
+    }
+  }
+  const table=document.getElementById('detail-table');
+  table.innerHTML=`<thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${
+    rows.map(r=>`<tr>${r.map(c=>`<td>${c??''}</td>`).join('')}</tr>`).join('')
+  }</tbody>`;
+}
+
+// ─────────────────────────────────────────
+// UI
+// ─────────────────────────────────────────
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    const names=['overview','efficiency','saturation','scores','detail'];
+    b.classList.toggle('active',names[i]===name);
+  });
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+function setStep(id,state){
+  const el=document.getElementById(id);
+  el.className='step'+(state==='active'?' active':state==='done'?' done':'');
+}
+function setProgress(pct,title,detail){
+  document.getElementById('progress-bar').style.width=pct+'%';
+  document.getElementById('progress-title').textContent=title;
+  document.getElementById('progress-detail').textContent=detail;
+}
+
+// Init key from localStorage
+const savedKey=localStorage.getItem('promo_api_key')||DEFAULT_API_KEY;
+document.getElementById('api-key-input').value=savedKey;
+if(savedKey)startBtn.disabled=false;
+
+// File selection
+let selectedFile=null;
+const fileInput=document.getElementById('file-input');
+const dropZone=document.getElementById('drop-zone');
+const startBtn=document.getElementById('start-btn');
+
+function onFileSelected(file){
+  if(!file||!file.name.endsWith('.zip')){
+    document.getElementById('upload-error').textContent='请选择 .zip 文件';
+    document.getElementById('upload-error').style.display='block';
+    return;
+  }
+  selectedFile=file;
+  document.getElementById('upload-error').style.display='none';
+  dropZone.querySelector('p').textContent=`已选择: ${file.name}`;
+  startBtn.disabled=false;
+}
+
+fileInput.addEventListener('change',e=>onFileSelected(e.target.files[0]));
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over')});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');onFileSelected(e.dataTransfer.files[0])});
+
+startBtn.addEventListener('click',async()=>{
+  const apiKey=document.getElementById('api-key-input').value.trim();
+  if(!apiKey){alert('请填入 API Key（xai-... 或其他 OpenAI-compatible key）');return;}
+  localStorage.setItem('promo_api_key',apiKey);
+  if(!selectedFile)return;
+
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('progress-screen').style.display='flex';
+
+  try{
+    // Extract + Parse
+    setStep('step-extract','active');
+    setProgress(5,'正在解压...','读取 zip 包');
+    const convs=await parseZip(selectedFile);
+    setStep('step-extract','done');setStep('step-parse','active');
+    setProgress(20,`解析完成 ${convs.length} 段对话`,`检测到 ${[...new Set(convs.map(c=>c.person))].length} 人 / ${[...new Set(convs.map(c=>c.day))].length} 天`);
+    await new Promise(r=>setTimeout(r,300));
+
+    // Score
+    setStep('step-parse','done');setStep('step-score','active');
+    const scores=await scoreAll(convs,apiKey,(done,total)=>{
+      const pct=20+Math.round(done/total*60);
+      setProgress(pct,`AI评分中 ${done}/${total}`,`并发5路 · 模型: ${MODEL}`);
+    });
+    setStep('step-score','done');setStep('step-build','active');
+    setProgress(85,'生成报告...','计算统计指标');
+
+    // Build
+    await new Promise(r=>setTimeout(r,100));
+    const days=[...new Set(convs.map(c=>c.day))].sort((a,b)=>{
+      const [am,ad]=a.split('-').map(Number);
+      const [bm,bd]=b.split('-').map(Number);
+      return am!==bm?am-bm:ad-bd;
+    });
+    const stats=computeStats(convs,scores);
+    const alreadyIn=computeAlreadyInGroup(convs);
+
+    setStep('step-build','done');
+    setProgress(100,'完成！','');
+    await new Promise(r=>setTimeout(r,200));
+
+    // Show report
+    document.getElementById('progress-screen').style.display='none';
+    document.getElementById('report-screen').style.display='block';
+
+    const dayLabelsStr=days.length===1?days[0]:`${days[0]}–${days[days.length-1]}`;
+    document.getElementById('report-title').textContent=`地推分析报告 · ${dayLabelsStr}`;
+    document.getElementById('report-meta').textContent=`${[...new Set(convs.map(c=>c.person))].length}人 · ${convs.length}段对话 · ${days.length}天`;
+
+    buildReport(convs,scores,stats,alreadyIn,days);
+  }catch(e){
+    document.getElementById('progress-screen').style.display='none';
+    document.getElementById('upload-screen').style.display='flex';
+    document.getElementById('upload-error').textContent='处理出错: '+e.message;
+    document.getElementById('upload-error').style.display='block';
+    console.error(e);
+  }
+});
+</script>
+</body>
+</html>
