@@ -744,8 +744,9 @@ const fileInput=document.getElementById('file-input');
 const dropZone=document.getElementById('drop-zone');
 const startBtn=document.getElementById('start-btn');
 
-// Init key from localStorage
-const savedKey=localStorage.getItem('promo_api_key')||DEFAULT_API_KEY;
+// Init key from localStorage (versioned key: old sk-or-v1-* entries are ignored)
+const _storedKey=localStorage.getItem('promo_api_key_xai')||'';
+const savedKey=(_storedKey&&_storedKey.startsWith('xai-'))?_storedKey:DEFAULT_API_KEY;
 document.getElementById('api-key-input').value=savedKey;
 if(savedKey)startBtn.disabled=false;
 
@@ -769,7 +770,7 @@ dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remov
 startBtn.addEventListener('click',async()=>{
   const apiKey=document.getElementById('api-key-input').value.trim();
   if(!apiKey){alert('请填入 API Key（xai-... 或其他 OpenAI-compatible key）');return;}
-  localStorage.setItem('promo_api_key',apiKey);
+  if(apiKey.startsWith('xai-'))localStorage.setItem('promo_api_key_xai',apiKey);
   if(!selectedFile)return;
 
   document.getElementById('upload-screen').style.display='none';
