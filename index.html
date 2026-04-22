@@ -705,11 +705,11 @@ function exportReport(){
   });
 
   // Hide upload/progress screens in export; show only report
-  const exportUpload=cloned.getElementById('upload-screen');
+  const exportUpload=cloned.querySelector('#upload-screen');
   if(exportUpload)exportUpload.style.display='none';
-  const exportProg=cloned.getElementById('progress-screen');
+  const exportProg=cloned.querySelector('#progress-screen');
   if(exportProg)exportProg.style.display='none';
-  const exportRep=cloned.getElementById('report-screen');
+  const exportRep=cloned.querySelector('#report-screen');
   if(exportRep)exportRep.style.display='block';
 
   // Remove script tags (static export, no interactivity needed)
