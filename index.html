@@ -8,92 +8,94 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0d0f1a;color:#c8d0e0;font-family:'PingFang SC','Microsoft YaHei',sans-serif;min-height:100vh}
-h1{font-size:1.5rem;color:#e8eaf0;font-weight:600}
-h2{font-size:1.1rem;color:#a0aab8;font-weight:500;margin-bottom:12px}
-a{color:#7eb3ff}
+body{background:#f0f2f5;color:#1a202c;font-family:'PingFang SC','Microsoft YaHei',sans-serif;min-height:100vh}
+h1{font-size:1.5rem;color:#111827;font-weight:600}
+h2{font-size:1rem;color:#374151;font-weight:600;margin-bottom:12px}
+a{color:#2563eb}
 
 /* ── Upload screen ── */
-#upload-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px;gap:24px}
-#drop-zone{border:2px dashed #2a3555;border-radius:16px;width:100%;max-width:560px;padding:60px 40px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s}
-#drop-zone:hover,#drop-zone.drag-over{border-color:#4a7fd4;background:#131728}
-#drop-zone p{color:#6070a0;margin-top:10px;font-size:0.9rem}
+#upload-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px;gap:20px;background:#f0f2f5}
+#drop-zone{border:2px dashed #d1d5db;border-radius:12px;width:100%;max-width:520px;padding:48px 40px;text-align:center;cursor:pointer;background:#fff;transition:border-color .2s,background .2s;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+#drop-zone:hover,#drop-zone.drag-over{border-color:#2563eb;background:#eff6ff}
+#drop-zone p{color:#6b7280;margin-top:8px;font-size:.88rem}
 #drop-zone input{display:none}
-.btn-main{background:#2d5ccc;color:#fff;border:none;border-radius:8px;padding:12px 28px;font-size:1rem;cursor:pointer;transition:background .2s}
-.btn-main:hover{background:#3a72e8}
-.key-row{display:flex;gap:8px;width:100%;max-width:560px;align-items:center}
-.key-row label{color:#6070a0;font-size:.85rem;white-space:nowrap}
-.key-row input{flex:1;background:#131728;border:1px solid #2a3555;border-radius:6px;padding:8px 12px;color:#c8d0e0;font-size:.85rem;font-family:monospace}
-.key-row input:focus{outline:none;border-color:#4a7fd4}
+.btn-main{background:#2563eb;color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:.95rem;cursor:pointer;transition:background .2s;font-weight:500}
+.btn-main:hover{background:#1d4ed8}
+.btn-main:disabled{background:#9ca3af;cursor:not-allowed}
+.key-row{display:flex;gap:8px;width:100%;max-width:520px;align-items:center}
+.key-row label{color:#6b7280;font-size:.82rem;white-space:nowrap}
+.key-row input{flex:1;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;color:#1a202c;font-size:.82rem;font-family:monospace}
+.key-row input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 2px #dbeafe}
 
 /* ── Progress ── */
-#progress-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:20px;padding:40px}
-.progress-title{font-size:1.2rem;color:#e8eaf0}
-.progress-bar-wrap{width:100%;max-width:480px;background:#1a1f35;border-radius:8px;height:8px;overflow:hidden}
-.progress-bar{height:100%;background:#2d5ccc;transition:width .3s;width:0%}
-.progress-detail{color:#6070a0;font-size:.85rem;max-width:480px;text-align:center}
-.step-list{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
-.step{background:#1a1f35;border-radius:20px;padding:6px 16px;font-size:.8rem;color:#505878}
-.step.active{background:#1e2f58;color:#7eb3ff}
-.step.done{background:#1e3527;color:#5cb87a}
+#progress-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:20px;padding:40px;background:#f0f2f5}
+.progress-title{font-size:1.1rem;color:#111827;font-weight:500}
+.progress-bar-wrap{width:100%;max-width:480px;background:#e5e7eb;border-radius:8px;height:6px;overflow:hidden}
+.progress-bar{height:100%;background:#2563eb;transition:width .3s;width:0%}
+.progress-detail{color:#6b7280;font-size:.82rem;max-width:480px;text-align:center}
+.step-list{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.step{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:5px 14px;font-size:.78rem;color:#9ca3af}
+.step.active{background:#eff6ff;border-color:#93c5fd;color:#2563eb}
+.step.done{background:#f0fdf4;border-color:#86efac;color:#16a34a}
 
 /* ── Report screen ── */
-#report-screen{display:none;padding:24px 0 60px}
-.report-header{background:#111422;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;position:sticky;top:0;z-index:100}
-.report-header h1{font-size:1.2rem}
-.header-meta{color:#6070a0;font-size:.8rem}
+#report-screen{display:none;padding:0 0 60px;background:#f0f2f5}
+.report-header{background:#fff;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:1px solid #e5e7eb;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.report-header h1{font-size:1.1rem;color:#111827}
+.header-meta{color:#9ca3af;font-size:.78rem}
 
 /* Tabs */
-.tabs{display:flex;gap:4px;padding:0 32px;margin-bottom:24px;border-bottom:1px solid #1a1f35}
-.tab-btn{padding:10px 20px;background:none;border:none;color:#6070a0;cursor:pointer;font-size:.9rem;border-bottom:2px solid transparent;transition:.15s}
-.tab-btn.active{color:#7eb3ff;border-bottom-color:#4a7fd4}
+.tabs{display:flex;gap:0;padding:0 32px;background:#fff;border-bottom:1px solid #e5e7eb;margin-bottom:24px}
+.tab-btn{padding:12px 18px;background:none;border:none;color:#6b7280;cursor:pointer;font-size:.88rem;border-bottom:2px solid transparent;transition:.15s;margin-bottom:-1px}
+.tab-btn.active{color:#2563eb;border-bottom-color:#2563eb}
+.tab-btn:hover{color:#374151}
 .tab-content{display:none;padding:0 32px}
 .tab-content.active{display:block}
 
 /* Cards */
-.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
-.kpi-card{background:#111422;border-radius:10px;padding:16px;text-align:center}
-.kpi-val{font-size:2rem;font-weight:700;color:#e8eaf0;line-height:1}
-.kpi-label{font-size:.75rem;color:#6070a0;margin-top:6px}
-.kpi-sub{font-size:.7rem;color:#505878;margin-top:2px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.kpi-card{background:#fff;border-radius:10px;padding:16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #f3f4f6}
+.kpi-val{font-size:1.8rem;font-weight:700;color:#111827;line-height:1}
+.kpi-label{font-size:.72rem;color:#6b7280;margin-top:6px}
+.kpi-sub{font-size:.68rem;color:#9ca3af;margin-top:2px}
 
 /* Person cards */
-.person-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:16px}
-.person-card{background:#111422;border-radius:10px;padding:16px;border-top:3px solid transparent}
-.person-card h3{font-size:.95rem;font-weight:600;margin-bottom:8px}
-.person-stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px}
-.person-stat{font-size:.8rem;color:#6070a0}
-.person-stat strong{color:#c8d0e0}
-.trend-badge{font-size:.75rem;padding:2px 8px;border-radius:10px;margin-left:8px}
-.trend-up{background:#1b3a1e;color:#5cb87a}
-.trend-down{background:#3a1b1b;color:#e06060}
-.trend-flat{background:#1e1f2e;color:#6070a0}
-.spots{font-size:.75rem;color:#6070a0;margin-top:6px}
-.spots span{color:#8899cc}
+.person-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:12px}
+.person-card{background:#fff;border-radius:10px;padding:16px;border-left:4px solid transparent;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.person-card h3{font-size:.92rem;font-weight:600;margin-bottom:8px;color:#111827}
+.person-stats{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.person-stat{font-size:.78rem;color:#6b7280}
+.person-stat strong{color:#1a202c}
+.trend-badge{font-size:.72rem;padding:2px 8px;border-radius:10px;margin-left:8px}
+.trend-up{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+.trend-down{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.trend-flat{background:#f9fafb;color:#6b7280;border:1px solid #e5e7eb}
+.spots{font-size:.72rem;color:#6b7280;margin-top:6px;line-height:1.5}
+.spots span{color:#2563eb}
 
 /* Charts */
-.chart-wrap{background:#111422;border-radius:10px;padding:20px;margin-bottom:20px}
-.chart-title{font-size:.9rem;color:#a0aab8;margin-bottom:14px}
+.chart-wrap{background:#fff;border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #f3f4f6}
+.chart-title{font-size:.85rem;color:#6b7280;margin-bottom:14px;font-weight:500}
 .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:700px){.chart-grid{grid-template-columns:1fr}}
 canvas{max-width:100%}
 
 /* Table */
-.data-table{width:100%;border-collapse:collapse;font-size:.8rem}
-.data-table th{background:#1a1f35;color:#8899cc;padding:8px 10px;text-align:left;white-space:nowrap;position:sticky;top:0}
-.data-table td{padding:8px 10px;border-bottom:1px solid #1a1f35;color:#c8d0e0}
-.data-table tr:hover td{background:#131728}
-.table-wrap{overflow-x:auto;border-radius:10px;background:#111422}
+.data-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.data-table th{background:#f9fafb;color:#374151;padding:9px 10px;text-align:left;white-space:nowrap;position:sticky;top:0;border-bottom:2px solid #e5e7eb;font-weight:500}
+.data-table td{padding:8px 10px;border-bottom:1px solid #f3f4f6;color:#1a202c}
+.data-table tr:hover td{background:#f9fafb}
+.table-wrap{overflow-x:auto;border-radius:10px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #f3f4f6}
 
 /* Error */
-.error-box{background:#2a1010;border:1px solid #5a2020;border-radius:8px;padding:16px;color:#e08080;margin-top:16px}
+.error-box{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px;color:#b91c1c;margin-top:16px}
 
 /* Sat meter */
 .sat-row{display:flex;align-items:center;gap:10px;margin:6px 0}
-.sat-bar-bg{flex:1;background:#1a1f35;border-radius:4px;height:8px;overflow:hidden}
+.sat-bar-bg{flex:1;background:#e5e7eb;border-radius:4px;height:8px;overflow:hidden}
 .sat-bar{height:100%;border-radius:4px;transition:width .5s}
-.sat-pct{font-size:.8rem;color:#c8d0e0;width:50px;text-align:right}
-.sat-name{font-size:.8rem;color:#8899cc;width:60px}
+.sat-pct{font-size:.78rem;color:#374151;width:50px;text-align:right}
+.sat-name{font-size:.78rem;color:#374151;width:60px}
 </style>
 </head>
 <body>
@@ -105,7 +107,7 @@ canvas{max-width:100%}
     <p style="color:#6070a0;font-size:.9rem;margin-top:6px">上传录音转写 zip 包，自动解析话术质量与进群转化</p>
   </div>
   <div id="drop-zone" onclick="document.getElementById('file-input').click()">
-    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3a4a6a" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     <p>点击或拖拽 .zip 文件到此处</p>
     <p>支持多天、多人录音转写（txt格式）</p>
     <input type="file" id="file-input" accept=".zip">
@@ -114,7 +116,7 @@ canvas{max-width:100%}
     <label>API Key</label>
     <input type="password" id="api-key-input" placeholder="xai-..." autocomplete="off">
   </div>
-  <p style="font-size:.75rem;color:#404858;max-width:560px;text-align:center">Key 仅存在浏览器 localStorage，不上传服务器。支持 xAI (xai-...)、OpenRouter、Anthropic 等 OpenAI-compatible key。</p>
+  <p style="font-size:.75rem;color:#9ca3af;max-width:520px;text-align:center">API Key 仅保存在浏览器本地，不上传服务器。</p>
   <button class="btn-main" id="start-btn" disabled>开始分析</button>
   <div id="upload-error" class="error-box" style="display:none;max-width:560px"></div>
 </div>
@@ -138,8 +140,8 @@ canvas{max-width:100%}
     <h1 id="report-title">地推分析报告</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="header-meta" id="report-meta"></div>
-      <button onclick="exportReport()" style="background:#1e2f58;color:#7eb3ff;border:1px solid #2a3a6a;border-radius:6px;padding:6px 14px;font-size:.8rem;cursor:pointer">导出 HTML</button>
-      <button onclick="resetToUpload()" style="background:#1a1f35;color:#6070a0;border:1px solid #2a3555;border-radius:6px;padding:6px 14px;font-size:.8rem;cursor:pointer">重新上传</button>
+      <button id="export-btn" onclick="exportReport()" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:6px;padding:6px 14px;font-size:.8rem;cursor:pointer;font-weight:500">导出 HTML</button>
+      <button onclick="resetToUpload()" style="background:#f9fafb;color:#6b7280;border:1px solid #e5e7eb;border-radius:6px;padding:6px 14px;font-size:.8rem;cursor:pointer">重新上传</button>
     </div>
   </div>
   <div class="tabs">
@@ -354,14 +356,19 @@ async function scoreOne(conv, apiKey){
     // Strip markdown code blocks
     const cm=content.match(/```(?:json)?\s*([\s\S]+?)```/);
     if(cm)content=cm[1].trim();
-    // Extract first {...} JSON object (handles preamble text from grok)
-    const jm=content.match(/\{[\s\S]*\}/);
-    if(jm)content=jm[0];
-    const parsed=JSON.parse(content);
+    // Try direct parse, then fallback to first {...} extraction
+    let parsed;
+    try{parsed=JSON.parse(content);}
+    catch(e1){
+      const jm=content.match(/\{[\s\S]*\}/);
+      if(!jm)return{error:'no JSON: '+content.slice(0,60)};
+      try{parsed=JSON.parse(jm[0]);}
+      catch(e2){return{error:e2.message+' | '+content.slice(0,60)};}
+    }
     // Normalize converted field (handle string "true"/"false")
     if(typeof parsed.converted==='string')parsed.converted=parsed.converted.toLowerCase()==='true';
     return parsed;
-  }catch(e){return{error:e.message+' | raw:'+String(e).slice(0,80)};}
+  }catch(e){return{error:e.message+' | '+String(e).slice(0,60)};}
 }
 
 async function scoreAll(convs, apiKey, onProgress){
@@ -587,12 +594,12 @@ function buildReport(convs, scores, stats, alreadyIn, days){
     label:p,data:days.map(d=>stats[p]?.[d]?.conv_per_hour??null),
     borderColor:personColor(p),backgroundColor:personColor(p)+'33',
     tension:.3,spanGaps:true,pointRadius:4
-  }))},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,grid:{color:'#1e2a45'}}}}});
-  makeChart('effPhChart',{type:'line',data:effPhData,options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,grid:{color:'#1e2a45'}}}}});
+  }))},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,grid:{color:'#e5e7eb'}}}}});
+  makeChart('effPhChart',{type:'line',data:effPhData,options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,grid:{color:'#e5e7eb'}}}}});
   makeChart('convAbsChart',{type:'bar',data:{labels:dayLabels,datasets:persons.map(p=>({
     label:p,data:days.map(d=>stats[p]?.[d]?.converted??null),
     backgroundColor:personColor(p)+'aa',borderColor:personColor(p),borderWidth:1
-  }))},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,grid:{color:'#1e2a45'}}}}});
+  }))},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,grid:{color:'#e5e7eb'}}}}});
 
   // ── Saturation charts ──
   const cumData=saturation.map(r=>r.cumulative);
@@ -604,14 +611,14 @@ function buildReport(convs, scores, stats, alreadyIn, days){
     <div class="kpi-card"><div class="kpi-val">${satRate}%</div><div class="kpi-label">点位饱和率</div><div class="kpi-sub">已在群÷有效对话</div></div>
   `;
   makeChart('cumChart',{type:'bar',data:{labels:dayLabels,datasets:[
-    {label:'当日进群',data:dailyData,backgroundColor:'#2d5ccc88',borderColor:'#4a7fd4',borderWidth:1,yAxisID:'y'},
+    {label:'当日进群',data:dailyData,backgroundColor:'#2563eb88',borderColor:'#2563eb',borderWidth:1,yAxisID:'y'},
     {label:'累计进群',data:cumData,type:'line',borderColor:'#EDC948',backgroundColor:'#EDC94833',pointRadius:4,tension:.3,yAxisID:'y2'}
-  ]},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,grid:{color:'#1e2a45'}},y2:{position:'right',beginAtZero:true,grid:{display:false}}}}});
+  ]},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,grid:{color:'#e5e7eb'}},y2:{position:'right',beginAtZero:true,grid:{display:false}}}}});
 
   makeChart('alreadyInChart',{type:'bar',data:{labels:dayLabels,datasets:persons.map(p=>({
     label:p,data:days.map(d=>alreadyIn[p]?.[d]?.per_hour??null),
     backgroundColor:personColor(p)+'aa',borderColor:personColor(p),borderWidth:1
-  }))},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,title:{display:true,text:'已在群路人/h'},grid:{color:'#1e2a45'}}}}});
+  }))},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,title:{display:true,text:'已在群路人/h'},grid:{color:'#e5e7eb'}}}}});
 
   // Sat bars
   const satBars=persons.map(p=>{
@@ -641,14 +648,14 @@ function buildReport(convs, scores, stats, alreadyIn, days){
     borderColor:personColor(p),backgroundColor:'transparent',borderWidth:2,pointRadius:3,
     fill:false
   }))},options:{responsive:true,scales:{r:{beginAtZero:true,max:5,
-    grid:{color:'#2a3555'},angleLines:{color:'#2a3555'},
-    ticks:{stepSize:1,color:'#6070a0',backdropColor:'transparent',font:{size:10}},
-    pointLabels:{color:'#a0aab8',font:{size:12},padding:16}
-  }},plugins:{legend:{position:'bottom',labels:{color:'#a0aab8',boxWidth:12,padding:12}}}}});
+    grid:{color:'#e5e7eb'},angleLines:{color:'#d1d5db'},
+    ticks:{stepSize:1,color:'#6b7280',backdropColor:'transparent',font:{size:10}},
+    pointLabels:{color:'#374151',font:{size:12},padding:16}
+  }},plugins:{legend:{position:'bottom',labels:{color:'#374151',boxWidth:12,padding:12}}}}});
   makeChart('dimBarChart',{type:'bar',data:{labels:SCORE_DIMS.map(d=>DIM_LABELS[d]),datasets:persons.map(p=>({
     label:p,data:SCORE_DIMS.map(d=>radar[p][d]),
     backgroundColor:personColor(p)+'aa',borderColor:personColor(p),borderWidth:1
-  }))},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,max:5,grid:{color:'#1e2a45'}}}}});
+  }))},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,max:5,grid:{color:'#e5e7eb'}}}}});
 
   // ── Detail table ──
   const headers=['姓名','日期','总对话','有效对话','进群','进群/h','有效/h','录音h','已在群','已在群/h','钩子','传递','异议','引导'];
@@ -815,7 +822,7 @@ startBtn.addEventListener('click',async()=>{
     // Show diagnostic banner if high error rate
     if(scoreErrors>convs.length*0.2){
       const banner=document.createElement('div');
-      banner.style.cssText='background:#2a1010;border:1px solid #5a2020;border-radius:8px;padding:12px 32px;margin:0 32px 16px;color:#e08080;font-size:.85rem';
+      banner.style.cssText='background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 32px;margin:0 32px 16px;color:#b91c1c;font-size:.85rem';
       banner.innerHTML=`<strong>⚠ AI评分异常：${scoreErrors}/${convs.length} 条调用失败</strong><br>进群数可能偏低。最近错误：${lastError.slice(0,150)}<br>可能原因：API Key 有误 / CORS 限制 / 网络超时。建议刷新后重试。`;
       document.querySelector('.tabs').before(banner);
     }
